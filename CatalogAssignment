@@ -1,0 +1,60 @@
+import org.json.JSONObject;
+import java.io.FileReader;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+
+public class SecretSharing {
+
+    public static void main(String[] args) throws Exception {
+        JSONObject testCase1 = new JSONObject(new FileReader("testcase1.json"));
+        JSONObject testCase2 = new JSONObject(new FileReader("testcase2.json"));
+
+        System.out.println("Secret for Test Case 1: " + findSecret(testCase1));
+        System.out.println("Secret for Test Case 2: " + findSecret(testCase2));
+    }
+
+    private static BigInteger findSecret(JSONObject testCase) {
+        int k = testCase.getJSONObject("keys").getInt("k");
+        List<BigInteger[]> points = new ArrayList<>();
+
+        for (String key : testCase.keySet()) {
+            if (!key.equals("keys")) {
+                int x = Integer.parseInt(key);
+                JSONObject point = testCase.getJSONObject(key);
+                int base = point.getInt("base");
+                String value = point.getString("value");
+                BigInteger y = new BigInteger(value, base);
+                points.add(new BigInteger[]{BigInteger.valueOf(x), y});
+            }
+        }
+
+        return lagrangeInterpolation(points, k);
+    }
+
+    private static BigInteger lagrangeInterpolation(List<BigInteger[]> points, int k) {
+        BigInteger constantTerm = BigInteger.ZERO;
+
+        for (int i = 0; i < k; i++) {
+            BigInteger[] pointI = points.get(i);
+            BigInteger xi = pointI[0];
+            BigInteger yi = pointI[1];
+            BigInteger numerator = BigInteger.ONE;
+            BigInteger denominator = BigInteger.ONE;
+
+            for (int j = 0; j < k; j++) {
+                if (i != j) {
+                    BigInteger[] pointJ = points.get(j);
+                    BigInteger xj = pointJ[0];
+                    numerator = numerator.multiply(xj.negate());
+                    denominator = denominator.multiply(xi.subtract(xj));
+                }
+            }
+
+            BigInteger li = numerator.divide(denominator);
+            constantTerm = constantTerm.add(yi.multiply(li));
+        }
+
+        return constantTerm.mod(BigInteger.valueOf(256));
+    }
+}
